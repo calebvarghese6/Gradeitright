@@ -1,40 +1,48 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { cn } from "~/lib/utils";
+import { Button } from "~/components/ui/button";
+import { logout } from "~/lib/supabase/actions";
+import { createClient } from "~/lib/supabase/server";
 
-const links = [
-  { href: "/", label: "Home" },
-  { href: "/notes", label: "Notes" },
-];
-
-export function Navbar() {
-  const pathname = usePathname();
+export async function Navbar() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   return (
-    <nav className="border-b border-border bg-background">
-      <div className="mx-auto flex h-14 max-w-3xl items-center gap-6 px-4">
-        <Link href="/" className="font-semibold tracking-tight">
-          Lumos App
+    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+        <Link href="/" className="text-lg font-bold tracking-tight">
+          GradeIt<span className="text-primary">Right</span>
         </Link>
-        <div className="flex gap-4">
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                "text-sm transition-colors hover:text-foreground",
-                pathname === link.href
-                  ? "text-foreground"
-                  : "text-muted-foreground",
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
+        <div className="flex items-center gap-2">
+          {user ? (
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/dashboard">Dashboard</Link>
+              </Button>
+              <form action={logout}>
+                <Button type="submit" variant="outline" size="sm">
+                  Sign Out
+                </Button>
+              </form>
+            </>
+          ) : (
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/login">Sign In</Link>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                className="transition-all hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/25"
+              >
+                <Link href="/signup">Sign Up</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
-    </nav>
+    </header>
   );
 }

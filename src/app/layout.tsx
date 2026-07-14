@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { Navbar } from "~/components/navbar";
-import { ThemeProvider } from "./theme-provider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Lumos App",
-  description: "Built with create-lumos-app",
+  title: "GradeItRight — Know exactly what you need to pass",
+  description:
+    "GradeItRight tells you the exact score you need on every remaining assignment to hit your target grade — across every class, in under 3 minutes.",
 };
 
 export default function RootLayout({
@@ -17,13 +16,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <ThemeProvider>
-          <Navbar />
-          {children}
-        </ThemeProvider>
-      </body>
+    <html lang="en" className="scroll-smooth">
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }

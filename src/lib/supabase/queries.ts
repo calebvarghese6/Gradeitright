@@ -4,6 +4,7 @@ import type {
   AssignmentRow,
   CategoryRow,
   ClassWithDetails,
+  TargetGradeRow,
 } from "~/lib/supabase/types";
 
 export async function fetchOnboardingCompleted(
@@ -25,38 +26,30 @@ export async function fetchClassesWithDetails(
 ): Promise<ClassWithDetails[]> {
   const { data, error } = await supabase
     .from("classes")
-    .select("*, categories(*), assignments(*), target_grade:target_grades(*)")
+    .select("*, categories(*), assignments(*), target_grades(*)")
     .order("created_at", { ascending: true });
 
   if (error) throw error;
 
-  return (data ?? []).map((row) => {
-    const rawTargetGrade = Array.isArray(row.target_grade)
-      ? (row.target_grade[0] ?? null)
-      : (row.target_grade ?? null);
-
-    return {
-      ...row,
-      // Postgres `numeric` columns come back from PostgREST as strings (to
-      // avoid float precision loss), which silently turns `+` into string
-      // concatenation in the grade calculator's reduces. Coerce here once.
-      categories: (row.categories ?? []).map((c: CategoryRow) => ({
-        ...c,
-        weight_percentage: Number(c.weight_percentage),
-      })),
-      assignments: (row.assignments ?? []).map((a: AssignmentRow) => ({
-        ...a,
-        points_earned: a.points_earned == null ? null : Number(a.points_earned),
-        points_possible: Number(a.points_possible),
-      })),
-      target_grade: rawTargetGrade
-        ? {
-            ...rawTargetGrade,
-            target_percentage: Number(rawTargetGrade.target_percentage),
-          }
-        : null,
-    };
-  }) as ClassWithDetails[];
+  return (data ?? []).map((row) => ({
+    ...row,
+    // Postgres `numeric` columns come back from PostgREST as strings (to
+    // avoid float precision loss), which silently turns `+` into string
+    // concatenation in the grade calculator's reduces. Coerce here once.
+    categories: (row.categories ?? []).map((c: CategoryRow) => ({
+      ...c,
+      weight_percentage: Number(c.weight_percentage),
+    })),
+    assignments: (row.assignments ?? []).map((a: AssignmentRow) => ({
+      ...a,
+      points_earned: a.points_earned == null ? null : Number(a.points_earned),
+      points_possible: Number(a.points_possible),
+    })),
+    target_grades: (row.target_grades ?? []).map((t: TargetGradeRow) => ({
+      ...t,
+      target_percentage: Number(t.target_percentage),
+    })),
+  })) as ClassWithDetails[];
 }
 
 export async function checkIsAdmin(

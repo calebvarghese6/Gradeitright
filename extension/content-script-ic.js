@@ -35,23 +35,60 @@
     );
   }
 
+  function countAssignments(entry) {
+    return (entry.categories ?? []).reduce(
+      (s, c) => s + (c.assignments?.length ?? 0),
+      0,
+    );
+  }
+
   // Among a section's grading-task entries (one per term, plus exam/final
   // composites), pick whichever has the richest assignment list — that's
   // the student's actual current gradebook view, not a summary task.
+  // Only used as a fallback when no entries carry a quarter label.
   function pickPrimaryEntry(details) {
     let best = null;
     let bestCount = 0;
     for (const entry of details ?? []) {
-      const count = (entry.categories ?? []).reduce(
-        (s, c) => s + (c.assignments?.length ?? 0),
-        0,
-      );
+      const count = countAssignments(entry);
       if (count > bestCount) {
         best = entry;
         bestCount = count;
       }
     }
     return best;
+  }
+
+  // Map an IC grading-task entry to the school quarter it belongs to, from
+  // its term name ("Q1", "Qtr 2", "Quarter 3", "23-24 Q4"). Composite tasks
+  // (Semester Grade, Final Grade) carry no quarter number and return null,
+  // which also keeps their duplicated assignments out of the sync.
+  function quarterFromEntry(entry) {
+    for (const label of [entry.task?.termName, entry.task?.taskName]) {
+      if (!label) continue;
+      const m = /q(?:uarter|tr)?\s*0?([1-4])\b/i.exec(label);
+      if (m) return `Q${m[1]}`;
+    }
+    return null;
+  }
+
+  // Which term the student has highlighted in the Campus Student UI right
+  // now. IC marks the chosen term tab/option as selected or active; its
+  // label carries the quarter number ("Q3", "Qtr 3 (01/06 - 03/13)"). This
+  // is what drives GradeItRight's current quarter — the student's own view,
+  // not a guess from dates or from which term has the most data.
+  function selectedQuarterFromDom() {
+    const candidates = document.querySelectorAll(
+      "[aria-selected='true'], [aria-current], [class*='selected' i], [class*='active' i]",
+    );
+    for (const el of candidates) {
+      const text = el.textContent.trim().replace(/\s+/g, " ");
+      // A term label is short; long text means we matched a container.
+      if (!text || text.length > 30) continue;
+      const m = /(?:^|\b)(?:q|qtr|quarter)\s*0?([1-4])\b/i.exec(text);
+      if (m) return `Q${m[1]}`;
+    }
+    return null;
   }
 
   // Campus Student SPA: enrollments -> sections -> weighted category detail
@@ -78,6 +115,60 @@
     const detail = await fetchJson(
       `/campus/resources/portal/grades/detail/${course.sectionID}`,
     ).catch(() => null);
+
+    // Preferred path: IC returns one grading-task entry per term. Keep every
+    // quarter-labeled entry (the richest one per quarter — schools often add
+    // empty "progress" tasks for the same term) and tag each assignment with
+    // its quarter, so Q1 work lands in Q1 and Q2 work in Q2 instead of
+    // everything collapsing into whichever term happened to look "primary".
+    const byQuarter = new Map();
+    for (const candidate of detail?.details ?? []) {
+      const quarter = quarterFromEntry(candidate);
+      if (!quarter || countAssignments(candidate) === 0) continue;
+      const prev = byQuarter.get(quarter);
+      if (!prev || countAssignments(prev) < countAssignments(candidate)) {
+        byQuarter.set(quarter, candidate);
+      }
+    }
+
+    if (byQuarter.size > 0) {
+      const assignments = [];
+      const categoriesByName = new Map();
+      let isWeighted = false;
+      for (const [quarter, entry] of byQuarter) {
+        const entryWeighted = entry.task.groupWeighted === true;
+        if (entryWeighted) isWeighted = true;
+        for (const cat of entry.categories ?? []) {
+          // Category weights are the same class setup every term; merge by
+          // name across quarters instead of duplicating.
+          if (entryWeighted && !categoriesByName.has(cat.name)) {
+            categoriesByName.set(cat.name, {
+              name: cat.name,
+              weightPercentage: cat.weight,
+            });
+          }
+          for (const a of cat.assignments ?? []) {
+            if (a.active === false) continue;
+            const parsed = toAssignment(
+              a,
+              entryWeighted ? cat.name : undefined,
+            );
+            if (validAssignment(parsed))
+              assignments.push({ ...parsed, quarter });
+          }
+        }
+      }
+      return {
+        name: course.courseName,
+        gradingMode: isWeighted ? "weighted" : "points",
+        ...(isWeighted ? { categories: [...categoriesByName.values()] } : {}),
+        assignments,
+      };
+    }
+
+    // No quarter-labeled terms found: fall back to the single richest entry,
+    // untagged — the server files untagged assignments into the class's
+    // current quarter.
     const entry = detail ? pickPrimaryEntry(detail.details) : null;
 
     if (entry) {
@@ -164,8 +255,9 @@
       .catch(() => [])
       .then((classes) => {
         if (classes.length === 0) classes = collectFromTables();
-        console.log("[GradeItRight] scraped", classes);
-        sendResponse({ classes });
+        const selectedQuarter = selectedQuarterFromDom();
+        console.log("[GradeItRight] scraped", { selectedQuarter, classes });
+        sendResponse({ classes, selectedQuarter });
       });
     return true; // async response
   });

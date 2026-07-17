@@ -4,7 +4,7 @@
 const APP_URL = "http://localhost:3000"; // swap to production URL before publishing
 
 // biome-ignore lint/correctness/noUnusedVariables: called from popup.js
-async function sendGrades(token, classes) {
+async function sendGrades(token, classes, selectedQuarter) {
   try {
     const response = await fetch(`${APP_URL}/api/extension-sync`, {
       method: "POST",
@@ -12,7 +12,11 @@ async function sendGrades(token, classes) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ source: "infinite_campus", classes }),
+      body: JSON.stringify({
+        source: "infinite_campus",
+        classes,
+        ...(selectedQuarter ? { selectedQuarter } : {}),
+      }),
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {

@@ -4,6 +4,7 @@ import { CheckCircle2 } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { calculateClassGrade } from "~/lib/grade-calculator";
+import { getEffectiveQuarter } from "~/lib/quarter";
 import { completeOnboarding } from "~/lib/supabase/actions";
 import type { ClassWithDetails } from "~/lib/supabase/types";
 
@@ -12,7 +13,12 @@ export function StepReady({
 }: {
   createdClass: ClassWithDetails | null;
 }) {
-  const grade = createdClass ? calculateClassGrade(createdClass) : null;
+  const grade = createdClass
+    ? calculateClassGrade(
+        createdClass,
+        getEffectiveQuarter(createdClass, new Date()),
+      )
+    : null;
 
   return (
     <div className="flex flex-col items-center gap-6 text-center">

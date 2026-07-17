@@ -54,7 +54,7 @@ async function runSync(tabId, token) {
     return fail("No grades found on this page. Open your gradebook view.");
   }
 
-  const result = await sendGrades(token, data.classes);
+  const result = await sendGrades(token, data.classes, data.selectedQuarter);
   if (!result.ok) return fail(result.message);
 
   document.getElementById("ready").classList.add("hidden");

@@ -1,5 +1,7 @@
 export type GradingMode = "points" | "weighted";
 
+export type Quarter = "Q1" | "Q2" | "Q3" | "Q4";
+
 export interface CategoryRow {
   id: string;
   class_id: string;
@@ -16,6 +18,7 @@ export interface AssignmentRow {
   points_earned: number | null;
   points_possible: number;
   is_remaining: boolean;
+  quarter: Quarter;
   created_at: string;
 }
 
@@ -23,6 +26,7 @@ export interface TargetGradeRow {
   id: string;
   class_id: string;
   target_percentage: number;
+  quarter: Quarter;
   created_at: string;
 }
 
@@ -31,13 +35,14 @@ export interface ClassRow {
   user_id: string;
   name: string;
   grading_mode: GradingMode;
+  current_quarter_override: Quarter | null;
   created_at: string;
 }
 
 export interface ClassWithDetails extends ClassRow {
   categories: CategoryRow[];
   assignments: AssignmentRow[];
-  target_grade: TargetGradeRow | null;
+  target_grades: TargetGradeRow[];
 }
 
 export interface AdminClassSummary {

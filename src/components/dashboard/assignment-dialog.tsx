@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { createClient } from "~/lib/supabase/client";
-import type { AssignmentRow, CategoryRow } from "~/lib/supabase/types";
+import type { AssignmentRow, CategoryRow, Quarter } from "~/lib/supabase/types";
 
 export function AssignmentDialog({
   trigger,
@@ -30,6 +30,7 @@ export function AssignmentDialog({
   categories,
   assignment,
   defaultIsRemaining,
+  quarter,
   onSaved,
 }: {
   trigger: React.ReactNode;
@@ -37,6 +38,7 @@ export function AssignmentDialog({
   categories: CategoryRow[];
   assignment?: AssignmentRow;
   defaultIsRemaining?: boolean;
+  quarter: Quarter;
   onSaved: () => void;
 }) {
   const isEdit = !!assignment;
@@ -106,6 +108,7 @@ export function AssignmentDialog({
       points_earned: earned,
       points_possible: possible,
       is_remaining: isRemaining,
+      quarter: assignment?.quarter ?? quarter,
     };
 
     const { error: saveError } = isEdit

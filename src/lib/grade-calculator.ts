@@ -2,6 +2,7 @@ import type {
   AssignmentRow,
   CategoryRow,
   ClassWithDetails,
+  Quarter,
 } from "~/lib/supabase/types";
 
 export type GradeStatus = "green" | "yellow" | "red" | "none";
@@ -187,6 +188,22 @@ function calculateWeighted(
   };
 }
 
+export function toLetterGrade(pct: number): string {
+  if (pct >= 97) return "A+";
+  if (pct >= 93) return "A";
+  if (pct >= 90) return "A-";
+  if (pct >= 87) return "B+";
+  if (pct >= 83) return "B";
+  if (pct >= 80) return "B-";
+  if (pct >= 77) return "C+";
+  if (pct >= 73) return "C";
+  if (pct >= 70) return "C-";
+  if (pct >= 67) return "D+";
+  if (pct >= 63) return "D";
+  if (pct >= 60) return "D-";
+  return "F";
+}
+
 function targetLabelFor(target: number): string {
   for (const [letter, cutoff] of Object.entries(GRADE_LETTER_PRESETS)) {
     if (target === cutoff) return letter;
@@ -237,15 +254,21 @@ function buildSummary(params: {
   return `You need a ${scoreText}% ${target} to finish ${className} with a ${label}.`;
 }
 
-export function calculateClassGrade(cls: ClassWithDetails): GradeResult {
-  const target = cls.target_grade?.target_percentage ?? null;
+export function calculateClassGrade(
+  cls: ClassWithDetails,
+  quarter: Quarter,
+): GradeResult {
+  const assignments = cls.assignments.filter((a) => a.quarter === quarter);
+  const target =
+    cls.target_grades.find((t) => t.quarter === quarter)?.target_percentage ??
+    null;
 
   const result =
     cls.grading_mode === "weighted"
-      ? calculateWeighted(cls.categories, cls.assignments, target)
-      : calculatePoints(cls.assignments, target);
+      ? calculateWeighted(cls.categories, assignments, target)
+      : calculatePoints(assignments, target);
 
-  const remaining = cls.assignments.filter((a) => a.is_remaining);
+  const remaining = assignments.filter((a) => a.is_remaining);
   const remainingName = remaining.length === 1 ? remaining[0].name : null;
   const label = target != null ? targetLabelFor(target) : null;
 

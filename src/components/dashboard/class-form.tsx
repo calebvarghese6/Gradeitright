@@ -139,7 +139,7 @@ export function ClassForm({
       ...newClass,
       categories: insertedCategories,
       assignments: [],
-      target_grade: targetData ?? null,
+      target_grades: targetData ? [targetData] : [],
     });
   }
 

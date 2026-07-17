@@ -51,12 +51,29 @@ export function SyncTestClient() {
         classes: [
           ...classes.map((cls) => ({
             name: cls.name,
+            gradingMode: cls.grading_mode,
+            ...(cls.grading_mode === "weighted"
+              ? {
+                  categories: cls.categories.map((c) => ({
+                    name: c.name,
+                    weightPercentage: c.weight_percentage,
+                  })),
+                }
+              : {}),
             assignments: cls.assignments
               .filter((a) => !a.is_remaining && a.points_earned != null)
               .map((a) => ({
                 name: a.name,
                 pointsEarned: a.points_earned,
                 pointsPossible: a.points_possible,
+                quarter: a.quarter,
+                ...(a.category_id
+                  ? {
+                      categoryName: cls.categories.find(
+                        (c) => c.id === a.category_id,
+                      )?.name,
+                    }
+                  : {}),
               })),
           })),
           {

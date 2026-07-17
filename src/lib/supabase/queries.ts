@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AdminUserOverview, ClassWithDetails } from "~/lib/supabase/types";
+import type {
+  AdminUserOverview,
+  AssignmentRow,
+  CategoryRow,
+  ClassWithDetails,
+} from "~/lib/supabase/types";
 
 export async function fetchOnboardingCompleted(
   supabase: SupabaseClient,
@@ -26,15 +31,30 @@ export async function fetchClassesWithDetails(
   if (error) throw error;
 
   return (data ?? []).map((row) => {
-    const targetGrade = Array.isArray(row.target_grade)
+    const rawTargetGrade = Array.isArray(row.target_grade)
       ? (row.target_grade[0] ?? null)
       : (row.target_grade ?? null);
 
     return {
       ...row,
-      categories: row.categories ?? [],
-      assignments: row.assignments ?? [],
-      target_grade: targetGrade,
+      // Postgres `numeric` columns come back from PostgREST as strings (to
+      // avoid float precision loss), which silently turns `+` into string
+      // concatenation in the grade calculator's reduces. Coerce here once.
+      categories: (row.categories ?? []).map((c: CategoryRow) => ({
+        ...c,
+        weight_percentage: Number(c.weight_percentage),
+      })),
+      assignments: (row.assignments ?? []).map((a: AssignmentRow) => ({
+        ...a,
+        points_earned: a.points_earned == null ? null : Number(a.points_earned),
+        points_possible: Number(a.points_possible),
+      })),
+      target_grade: rawTargetGrade
+        ? {
+            ...rawTargetGrade,
+            target_percentage: Number(rawTargetGrade.target_percentage),
+          }
+        : null,
     };
   }) as ClassWithDetails[];
 }

@@ -27,6 +27,7 @@ interface RawResult {
   requiredScore: number | null;
   highestAchievable: number | null;
   status: GradeStatus;
+  hasRemainingWork: boolean;
 }
 
 function round1(n: number) {
@@ -39,6 +40,7 @@ function finalGradeResult(finalGrade: number, target: number): RawResult {
     requiredScore: null,
     highestAchievable: finalGrade,
     status: finalGrade >= target ? "green" : "red",
+    hasRemainingWork: false,
   };
 }
 
@@ -70,6 +72,7 @@ function calculatePoints(
       requiredScore: null,
       highestAchievable: null,
       status: "none",
+      hasRemainingWork: remainingPossible > 0,
     };
   }
 
@@ -80,6 +83,7 @@ function calculatePoints(
         requiredScore: null,
         highestAchievable: null,
         status: "none",
+        hasRemainingWork: false,
       };
     }
     return finalGradeResult(currentGrade, target);
@@ -95,6 +99,7 @@ function calculatePoints(
 
   return {
     currentGrade,
+    hasRemainingWork: true,
     requiredScore: status === "red" ? null : Math.max(requiredPercent, 0),
     highestAchievable: status === "red" ? highestAchievable : null,
     status,
@@ -106,29 +111,28 @@ function calculateWeighted(
   assignments: AssignmentRow[],
   target: number | null,
 ): RawResult {
-  const perCategory = categories
-    .map((cat) => {
-      const catAssignments = assignments.filter(
-        (a) => a.category_id === cat.id,
-      );
-      const completed = catAssignments.filter((a) => !a.is_remaining);
-      const remaining = catAssignments.filter((a) => a.is_remaining);
-      const earned = completed.reduce((s, a) => s + (a.points_earned ?? 0), 0);
-      const possible = completed.reduce((s, a) => s + a.points_possible, 0);
-      const remainingPossible = remaining.reduce(
-        (s, a) => s + a.points_possible,
-        0,
-      );
-      return {
-        weight: cat.weight_percentage / 100,
-        earned,
-        possible,
-        remainingPossible,
-        totalPossible: possible + remainingPossible,
-      };
-    })
-    .filter((c) => c.totalPossible > 0);
+  const perCategory = categories.map((cat) => {
+    const catAssignments = assignments.filter((a) => a.category_id === cat.id);
+    const completed = catAssignments.filter((a) => !a.is_remaining);
+    const remaining = catAssignments.filter((a) => a.is_remaining);
+    const earned = completed.reduce((s, a) => s + (a.points_earned ?? 0), 0);
+    const possible = completed.reduce((s, a) => s + a.points_possible, 0);
+    const remainingPossible = remaining.reduce(
+      (s, a) => s + a.points_possible,
+      0,
+    );
+    return {
+      weight: cat.weight_percentage / 100,
+      earned,
+      possible,
+      remainingPossible,
+      totalPossible: possible + remainingPossible,
+    };
+  });
 
+  // Categories with no assignments recorded yet (e.g. a final exam that
+  // hasn't happened) must still hold their full weight as "remaining" —
+  // dropping them would let their entire weight vanish from the grade.
   const currentCategories = perCategory.filter((c) => c.possible > 0);
   const currentWeightSum = currentCategories.reduce((s, c) => s + c.weight, 0);
   const currentGrade =
@@ -141,25 +145,29 @@ function calculateWeighted(
         100
       : null;
 
-  if (target == null || perCategory.length === 0) {
+  const totalWeight = perCategory.reduce((s, c) => s + c.weight, 0);
+
+  if (target == null || perCategory.length === 0 || totalWeight === 0) {
     return {
       currentGrade: target == null ? currentGrade : null,
       requiredScore: null,
       highestAchievable: null,
       status: "none",
+      hasRemainingWork: perCategory.some(
+        (c) => c.remainingPossible > 0 || c.totalPossible === 0,
+      ),
     };
   }
 
-  const totalWeight = perCategory.reduce((s, c) => s + c.weight, 0);
-  const banked = perCategory.reduce(
-    (s, c) => s + (c.weight / totalWeight) * (c.earned / c.totalPossible),
-    0,
-  );
-  const remainingCoefficient = perCategory.reduce(
-    (s, c) =>
-      s + (c.weight / totalWeight) * (c.remainingPossible / c.totalPossible),
-    0,
-  );
+  const banked = perCategory.reduce((s, c) => {
+    const bankedFraction = c.totalPossible > 0 ? c.earned / c.totalPossible : 0;
+    return s + (c.weight / totalWeight) * bankedFraction;
+  }, 0);
+  const remainingCoefficient = perCategory.reduce((s, c) => {
+    const remainingFraction =
+      c.totalPossible > 0 ? c.remainingPossible / c.totalPossible : 1;
+    return s + (c.weight / totalWeight) * remainingFraction;
+  }, 0);
 
   if (remainingCoefficient === 0) {
     return finalGradeResult(banked * 100, target);
@@ -172,6 +180,7 @@ function calculateWeighted(
 
   return {
     currentGrade,
+    hasRemainingWork: true,
     requiredScore: status === "red" ? null : Math.max(requiredPercent, 0),
     highestAchievable: status === "red" ? highestAchievable : null,
     status,
@@ -188,12 +197,17 @@ function targetLabelFor(target: number): string {
 function buildSummary(params: {
   className: string;
   label: string;
-  noRemainingWork: boolean;
   remainingName: string | null;
   result: RawResult;
 }): string {
-  const { className, label, noRemainingWork, remainingName, result } = params;
-  const { status, currentGrade, requiredScore, highestAchievable } = result;
+  const { className, label, remainingName, result } = params;
+  const {
+    status,
+    currentGrade,
+    requiredScore,
+    highestAchievable,
+    hasRemainingWork,
+  } = result;
 
   if (status === "none") {
     return label === ""
@@ -201,7 +215,7 @@ function buildSummary(params: {
       : `Add assignments to see what you need for a ${label} in ${className}.`;
   }
 
-  if (noRemainingWork) {
+  if (!hasRemainingWork) {
     const grade = round1(currentGrade ?? 0);
     return status === "green"
       ? `${className} is done — you finished with a ${grade}%, hitting your ${label} target.`
@@ -232,14 +246,12 @@ export function calculateClassGrade(cls: ClassWithDetails): GradeResult {
       : calculatePoints(cls.assignments, target);
 
   const remaining = cls.assignments.filter((a) => a.is_remaining);
-  const noRemainingWork = remaining.length === 0;
   const remainingName = remaining.length === 1 ? remaining[0].name : null;
   const label = target != null ? targetLabelFor(target) : null;
 
   const summary = buildSummary({
     className: cls.name,
     label: label ?? "",
-    noRemainingWork,
     remainingName,
     result,
   });

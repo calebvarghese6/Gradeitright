@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GradeItRight Sync</title>
+    <style>
+      body { width: 300px; margin: 0; padding: 20px; font-family: system-ui, sans-serif; background: #fff; color: #112244; }
+      h1 { font-size: 15px; margin: 0 0 10px; }
+      p { font-size: 13px; line-height: 1.5; margin: 0 0 14px; color: #44507a; }
+      button { width: 100%; padding: 10px; border: 0; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; background: #112244; color: #fff; }
+      button:disabled { opacity: 0.6; cursor: default; }
+      .hidden { display: none; }
+      .error { color: #b3261e; }
+    </style>
+  </head>
+  <body>
+    <h1>GradeItRight Sync</h1>
+
+    <div id="signed-out" class="hidden">
+      <p>Sign into GradeItRight first.</p>
+      <button type="button" id="open-login">Open Sign In</button>
+    </div>
+
+    <div id="not-ic" class="hidden">
+      <p>Navigate to your Infinite Campus gradebook to sync your grades.</p>
+      <button type="button" id="open-ic">Open Infinite Campus</button>
+    </div>
+
+    <div id="ready" class="hidden">
+      <p>We found your Infinite Campus gradebook. Ready to sync your grades?</p>
+      <button type="button" id="sync">Sync Now</button>
+      <p id="sync-error" class="error hidden"></p>
+    </div>
+
+    <div id="done" class="hidden">
+      <p id="done-message">Grades synced successfully. View your dashboard.</p>
+      <button type="button" id="open-dashboard">View Dashboard</button>
+    </div>
+
+    <script src="sync.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

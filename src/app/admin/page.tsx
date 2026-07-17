@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { fetchAdminUserOverview } from "~/lib/supabase/queries";
 import { createClient } from "~/lib/supabase/server";
@@ -18,12 +20,17 @@ export default async function AdminPage() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Admin</h1>
-        <p className="text-sm text-muted-foreground">
-          {users.length} {users.length === 1 ? "user" : "users"} ·{" "}
-          {totalClasses} {totalClasses === 1 ? "class" : "classes"} created
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Admin</h1>
+          <p className="text-sm text-muted-foreground">
+            {users.length} {users.length === 1 ? "user" : "users"} ·{" "}
+            {totalClasses} {totalClasses === 1 ? "class" : "classes"} created
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/admin/sync-test">Sync test</Link>
+        </Button>
       </div>
 
       {users.length === 0 ? (

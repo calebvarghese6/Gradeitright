@@ -1,7 +1,7 @@
 "use client";
 
-import { Check, ChevronDown, MoreVertical, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, ChevronDown, MoreVertical, Plus, Target } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { AssignmentDialog } from "~/components/dashboard/assignment-dialog";
 import { QuarterOverrideDialog } from "~/components/dashboard/quarter-override-dialog";
 import { TargetGradeControl } from "~/components/dashboard/target-grade-control";
@@ -16,9 +16,15 @@ import {
 } from "~/components/ui/dropdown-menu";
 import {
   calculateClassGrade,
+  type GradeResult,
   type GradeStatus,
   toLetterGrade,
 } from "~/lib/grade-calculator";
+import {
+  MISSED_TARGET_MESSAGES,
+  ON_TRACK_MESSAGES,
+  pickRandomMessage,
+} from "~/lib/grade-messages";
 import {
   getEffectiveQuarter,
   getQuarterStatus,
@@ -37,6 +43,15 @@ const STATUS_DOT: Record<GradeStatus, string> = {
   yellow: "bg-warning",
   red: "bg-destructive",
   none: "bg-muted-foreground/40",
+};
+
+const STATUS_CARD: Record<GradeStatus, string> = {
+  green: "border-success/30 bg-success/5",
+  yellow: "border-warning/30 bg-warning/5",
+  // Missed-target is the one state that should feel unmistakably different —
+  // a solid red wash, not just a tinted border like the other states.
+  red: "border-destructive/50 bg-destructive/15",
+  none: "border-border bg-muted/30",
 };
 
 function categoryName(
@@ -107,6 +122,101 @@ function AssignmentRowStatic({
       <span className="text-sm">
         {assignment.points_earned} / {assignment.points_possible}
       </span>
+    </div>
+  );
+}
+
+// A plain-language callout for "what do I need on what's left" — always
+// tagged with the quarter it applies to, since a student may be looking at
+// a different quarter's tab than the one currently in progress.
+function WhatYouNeedCard({
+  classId,
+  grade,
+  quarter,
+}: {
+  classId: string;
+  grade: GradeResult;
+  quarter: Quarter;
+}) {
+  // Even a perfect score on everything left can't reach the target —
+  // this is the one state that gets a somber, human message instead of
+  // the usual math-y summary. Missed is missed whether the quarter is
+  // still open (best case falls short) or already over (it already did).
+  const isMissedTarget = grade.status === "red";
+  // Already mathematically locked in for the target, with the quarter
+  // still open — a 0% on everything left wouldn't change the outcome.
+  const isSecured =
+    grade.status === "green" &&
+    grade.requiredScore != null &&
+    grade.requiredScore <= 0;
+
+  // Randomized per class/quarter so several classes in the same state
+  // don't all show the identical line, but stable across re-renders of
+  // the same card (typing in an unrelated field shouldn't reroll it).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: classId/quarter reroll the pick on class/tab change, not read in the body
+  const message = useMemo(() => {
+    if (isMissedTarget) return pickRandomMessage(MISSED_TARGET_MESSAGES);
+    if (isSecured) return pickRandomMessage(ON_TRACK_MESSAGES);
+    return null;
+  }, [classId, quarter, isMissedTarget, isSecured]);
+
+  const headline =
+    isMissedTarget && grade.highestAchievable != null
+      ? `${Math.round(grade.highestAchievable)}%`
+      : !isMissedTarget &&
+          !isSecured &&
+          (grade.status === "yellow" || grade.status === "green") &&
+          grade.requiredScore != null
+        ? `${Math.round(grade.requiredScore)}%`
+        : null;
+
+  const headlineLabel = isMissedTarget
+    ? "Maximum possible score"
+    : "Needed on what's left";
+
+  return (
+    <div className={cn("rounded-lg border p-3", STATUS_CARD[grade.status])}>
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={cn(
+            "flex items-center gap-1.5 text-xs font-medium",
+            isMissedTarget ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
+          <Target className="size-3.5" />
+          What you need
+        </span>
+        <Badge variant="outline" className="text-[10px]">
+          {quarter}
+        </Badge>
+      </div>
+
+      {headline && (
+        <div className="mt-1.5 flex items-baseline gap-1.5">
+          <span
+            className={cn(
+              "text-2xl font-bold",
+              isMissedTarget && "text-destructive",
+            )}
+          >
+            {headline}
+          </span>
+          <span className="text-xs text-muted-foreground">{headlineLabel}</span>
+        </div>
+      )}
+
+      <p
+        className={cn(
+          "mt-1 text-sm",
+          isMissedTarget
+            ? "font-medium text-destructive"
+            : isSecured
+              ? "font-medium text-success"
+              : "text-muted-foreground",
+        )}
+      >
+        {message ?? grade.summary}
+      </p>
     </div>
   );
 }
@@ -336,15 +446,13 @@ export function ClassCard({
                 <p className="text-xs text-muted-foreground">Target</p>
                 <p className="font-semibold">{grade.targetLabel ?? "—"}</p>
               </div>
-              {grade.requiredScore != null && (
-                <div>
-                  <p className="text-xs text-muted-foreground">Need on rest</p>
-                  <p className="font-semibold">{grade.requiredScore}%</p>
-                </div>
-              )}
             </div>
 
-            <p className="text-sm text-muted-foreground">{grade.summary}</p>
+            <WhatYouNeedCard
+              classId={cls.id}
+              grade={grade}
+              quarter={selectedQuarter}
+            />
           </>
         )}
       </CardHeader>

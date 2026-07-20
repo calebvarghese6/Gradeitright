@@ -9,17 +9,10 @@ import { completeOnboarding } from "~/lib/supabase/actions";
 import type { ClassWithDetails } from "~/lib/supabase/types";
 
 export function StepReady({
-  createdClass,
+  createdClasses,
 }: {
-  createdClass: ClassWithDetails | null;
+  createdClasses: ClassWithDetails[];
 }) {
-  const grade = createdClass
-    ? calculateClassGrade(
-        createdClass,
-        getEffectiveQuarter(createdClass, new Date()),
-      )
-    : null;
-
   return (
     <div className="flex flex-col items-center gap-6 text-center">
       <div className="flex size-16 items-center justify-center rounded-full bg-success/15">
@@ -33,24 +26,41 @@ export function StepReady({
         </p>
       </div>
 
-      {createdClass && grade && (
-        <div className="w-full rounded-lg border border-border p-4 text-left">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-medium">{createdClass.name}</span>
-            <Badge variant="outline">
-              {createdClass.grading_mode === "weighted" ? "Weighted" : "Points"}
-            </Badge>
-          </div>
-          <div className="mt-3 flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Current grade</span>
-            <span className="font-medium">
-              {grade.currentGrade != null ? `${grade.currentGrade}%` : "—"}
-            </span>
-          </div>
-          <div className="mt-1 flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Target</span>
-            <span className="font-medium">{grade.targetLabel ?? "—"}</span>
-          </div>
+      {createdClasses.length > 0 && (
+        <div className="flex w-full flex-col gap-3">
+          {createdClasses.map((cls) => {
+            const grade = calculateClassGrade(
+              cls,
+              getEffectiveQuarter(cls, new Date()),
+            );
+            return (
+              <div
+                key={cls.id}
+                className="w-full rounded-lg border border-border p-4 text-left"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">{cls.name}</span>
+                  <Badge variant="outline">
+                    {cls.grading_mode === "weighted" ? "Weighted" : "Points"}
+                  </Badge>
+                </div>
+                <div className="mt-3 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Current grade</span>
+                  <span className="font-medium">
+                    {grade.currentGrade != null
+                      ? `${grade.currentGrade}%`
+                      : "—"}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Target</span>
+                  <span className="font-medium">
+                    {grade.targetLabel ?? "—"}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

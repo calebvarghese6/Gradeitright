@@ -20,9 +20,7 @@ export function OnboardingFlow({ userId }: { userId: string }) {
   const [step, setStep] = useState(1);
   const [phase, setPhase] = useState<TransitionPhase>("idle");
   const [pendingStep, setPendingStep] = useState<number | null>(null);
-  const [createdClass, setCreatedClass] = useState<ClassWithDetails | null>(
-    null,
-  );
+  const [createdClasses, setCreatedClasses] = useState<ClassWithDetails[]>([]);
 
   useEffect(() => {
     const stored = Number(localStorage.getItem(storageKey));
@@ -69,14 +67,13 @@ export function OnboardingFlow({ userId }: { userId: string }) {
             {step === 2 && <StepHowItWorks onNext={() => goTo(3)} />}
             {step === 3 && (
               <StepAddClass
-                onCreated={(cls) => {
-                  setCreatedClass(cls);
-                  goTo(4);
-                }}
+                classes={createdClasses}
+                onAdd={(cls) => setCreatedClasses((prev) => [...prev, cls])}
+                onDone={() => goTo(4)}
                 onSkip={() => goTo(4)}
               />
             )}
-            {step === 4 && <StepReady createdClass={createdClass} />}
+            {step === 4 && <StepReady createdClasses={createdClasses} />}
           </CardContent>
         </Card>
       </div>

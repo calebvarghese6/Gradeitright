@@ -4,6 +4,8 @@ import type {
   AssignmentRow,
   CategoryRow,
   ClassWithDetails,
+  SubscriptionRow,
+  SyncRow,
   TargetGradeRow,
 } from "~/lib/supabase/types";
 
@@ -19,6 +21,50 @@ export async function fetchOnboardingCompleted(
 
   if (error) throw error;
   return data?.onboarding_completed ?? false;
+}
+
+export async function fetchIsPremium(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("is_premium")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.is_premium ?? false;
+}
+
+export async function fetchSubscription(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<SubscriptionRow | null> {
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as SubscriptionRow | null;
+}
+
+export async function fetchLastSync(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<SyncRow | null> {
+  const { data, error } = await supabase
+    .from("syncs")
+    .select("*")
+    .eq("user_id", userId)
+    .order("synced_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as SyncRow | null;
 }
 
 export async function fetchClassesWithDetails(

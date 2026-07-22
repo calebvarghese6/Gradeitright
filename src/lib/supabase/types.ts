@@ -63,5 +63,38 @@ export interface AdminUserOverview {
 export interface ProfileRow {
   user_id: string;
   onboarding_completed: boolean;
+  is_premium: boolean;
   created_at: string;
+}
+
+export type SubscriptionStatus =
+  | "active"
+  | "trialing"
+  | "past_due"
+  | "canceled"
+  | "incomplete"
+  | "incomplete_expired"
+  | "unpaid"
+  | "paused";
+
+export interface SubscriptionRow {
+  user_id: string;
+  stripe_customer_id: string;
+  stripe_subscription_id: string | null;
+  status: SubscriptionStatus;
+  price_id: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SyncSource = "infinite_campus" | "google_classroom";
+
+export interface SyncRow {
+  id: string;
+  user_id: string;
+  synced_at: string;
+  source: SyncSource;
+  records_updated: number;
 }

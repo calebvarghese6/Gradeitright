@@ -21,12 +21,12 @@ const plans = [
   },
   {
     name: "Auto Sync",
-    price: "$2.99",
+    price: "$3.99",
     period: "per month",
     features: [
       "Everything in free",
-      "Automatic sync with Canvas and Google Classroom",
-      "Always up to date",
+      "Automatic sync with Infinite Campus and Google Classroom",
+      "Up to 5 AI grade summaries per week",
       "Never enter a grade manually again",
     ],
     highlighted: true,

@@ -1,6 +1,6 @@
 import Link from "next/link";
+import { SignOutButton } from "~/components/auth/sign-out-button";
 import { Button } from "~/components/ui/button";
-import { logout } from "~/lib/supabase/actions";
 import { createClient } from "~/lib/supabase/server";
 
 export async function Navbar() {
@@ -21,11 +21,7 @@ export async function Navbar() {
               <Button asChild variant="ghost" size="sm">
                 <Link href="/dashboard">Dashboard</Link>
               </Button>
-              <form action={logout}>
-                <Button type="submit" variant="outline" size="sm">
-                  Sign Out
-                </Button>
-              </form>
+              <SignOutButton />
             </>
           ) : (
             <>

@@ -1,4 +1,4 @@
-import { SyncTestClient } from "~/components/admin/sync-test-client";
+import { SyncPanel } from "~/components/dashboard/sync-panel";
 
 export default function SyncTestPage() {
   return (
@@ -6,12 +6,12 @@ export default function SyncTestPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Sync test</h1>
         <p className="text-sm text-muted-foreground">
-          Sends a test payload to /api/sync using your session — the same call
-          the Chrome extension makes. Uses your real class and assignment names
-          plus one fake class to demo the review flow.
+          Sends your real classes and assignments to /api/sync — the same call
+          the Chrome extension makes. Admins bypass the premium gate and rate
+          limit.
         </p>
       </div>
-      <SyncTestClient />
+      <SyncPanel />
     </div>
   );
 }

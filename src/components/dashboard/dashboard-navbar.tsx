@@ -1,10 +1,11 @@
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
+import { SignOutButton } from "~/components/auth/sign-out-button";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
-import { Button } from "~/components/ui/button";
-import { logout } from "~/lib/supabase/actions";
 
 const NAV_LINKS = [{ href: "/dashboard", label: "Classes" }];
+const SYNC_LINK = { href: "/dashboard/sync", label: "Auto Sync" };
+const BILLING_LINK = { href: "/settings/billing", label: "Billing" };
 const ADMIN_LINK = { href: "/admin", label: "Admin" };
 
 function initialsFor(user: User) {
@@ -15,11 +16,18 @@ function initialsFor(user: User) {
 export function DashboardNavbar({
   user,
   isAdmin = false,
+  isPremium = false,
 }: {
   user: User;
   isAdmin?: boolean;
+  isPremium?: boolean;
 }) {
-  const links = isAdmin ? [...NAV_LINKS, ADMIN_LINK] : NAV_LINKS;
+  const links = [
+    ...NAV_LINKS,
+    ...(isPremium ? [SYNC_LINK] : []),
+    BILLING_LINK,
+    ...(isAdmin ? [ADMIN_LINK] : []),
+  ];
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
@@ -47,11 +55,7 @@ export function DashboardNavbar({
           <span className="hidden max-w-[10rem] truncate text-sm text-muted-foreground md:inline">
             {user.email}
           </span>
-          <form action={logout}>
-            <Button type="submit" variant="outline" size="sm">
-              Sign Out
-            </Button>
-          </form>
+          <SignOutButton />
         </div>
       </div>
     </header>

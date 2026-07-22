@@ -6,6 +6,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { createClient } from "~/lib/supabase/client";
 import { fetchClassesWithDetails } from "~/lib/supabase/queries";
+import type { SyncSource } from "~/lib/supabase/types";
 
 interface SyncResult {
   status: number;
@@ -23,12 +24,16 @@ interface SyncResult {
   };
 }
 
-export function SyncTestClient() {
+export function SyncPanel({
+  source = "infinite_campus",
+}: {
+  source?: SyncSource;
+}) {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<SyncResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function runTest() {
+  async function runSync() {
     setRunning(true);
     setResult(null);
     setError(null);
@@ -47,43 +52,40 @@ export function SyncTestClient() {
       const classes = await fetchClassesWithDetails(supabase);
 
       const payload = {
-        source: "infinite_campus" as const,
-        classes: [
-          ...classes.map((cls) => ({
-            name: cls.name,
-            gradingMode: cls.grading_mode,
-            ...(cls.grading_mode === "weighted"
-              ? {
-                  categories: cls.categories.map((c) => ({
-                    name: c.name,
-                    weightPercentage: c.weight_percentage,
-                  })),
-                }
-              : {}),
-            assignments: cls.assignments
-              .filter((a) => !a.is_remaining && a.points_earned != null)
-              .map((a) => ({
-                name: a.name,
-                pointsEarned: a.points_earned,
-                pointsPossible: a.points_possible,
-                quarter: a.quarter,
-                ...(a.category_id
-                  ? {
-                      categoryName: cls.categories.find(
-                        (c) => c.id === a.category_id,
-                      )?.name,
-                    }
-                  : {}),
-              })),
-          })),
-          {
-            name: "Sync Test Class (not in your account)",
-            assignments: [
-              { name: "Demo Quiz", pointsEarned: 9, pointsPossible: 10 },
-            ],
-          },
-        ],
+        source,
+        classes: classes.map((cls) => ({
+          name: cls.name,
+          gradingMode: cls.grading_mode,
+          ...(cls.grading_mode === "weighted"
+            ? {
+                categories: cls.categories.map((c) => ({
+                  name: c.name,
+                  weightPercentage: c.weight_percentage,
+                })),
+              }
+            : {}),
+          assignments: cls.assignments
+            .filter((a) => !a.is_remaining && a.points_earned != null)
+            .map((a) => ({
+              name: a.name,
+              pointsEarned: a.points_earned,
+              pointsPossible: a.points_possible,
+              quarter: a.quarter,
+              ...(a.category_id
+                ? {
+                    categoryName: cls.categories.find(
+                      (c) => c.id === a.category_id,
+                    )?.name,
+                  }
+                : {}),
+            })),
+        })),
       };
+
+      if (payload.classes.length === 0) {
+        setError("Add at least one class before syncing.");
+        return;
+      }
 
       const response = await fetch("/api/sync", {
         method: "POST",
@@ -99,7 +101,7 @@ export function SyncTestClient() {
         body: await response.json().catch(() => ({})),
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Test failed");
+      setError(e instanceof Error ? e.message : "Sync failed");
     } finally {
       setRunning(false);
     }
@@ -107,8 +109,13 @@ export function SyncTestClient() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Button onClick={runTest} disabled={running} className="self-start">
-        {running ? "Syncing…" : "Run test sync"}
+      <Button
+        onClick={runSync}
+        disabled={running}
+        variant="success"
+        className="self-start"
+      >
+        {running ? "Syncing…" : "Sync now"}
       </Button>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
@@ -156,22 +163,13 @@ export function SyncTestClient() {
                     </ul>
                   </div>
                 )}
-                <p className="text-muted-foreground">
-                  Run it again now and you should get HTTP 429 — the one-per-
-                  hour rate limit.
-                </p>
               </>
             )}
             {result.status === 429 && (
-              <p>
-                Rate limit working: {result.body.message ?? "try again later."}
-              </p>
+              <p>{result.body.message ?? "Rate limited — try again later."}</p>
             )}
             {result.status === 403 && (
-              <p>
-                Premium gate working:{" "}
-                {result.body.message ?? "upgrade required."}
-              </p>
+              <p>{result.body.message ?? "Upgrade required."}</p>
             )}
             {![200, 403, 429].includes(result.status) && (
               <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">

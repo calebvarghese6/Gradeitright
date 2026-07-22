@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { DashboardNavbar } from "~/components/dashboard/dashboard-navbar";
-import { checkIsAdmin, fetchOnboardingCompleted } from "~/lib/supabase/queries";
+import {
+  checkIsAdmin,
+  fetchIsPremium,
+  fetchOnboardingCompleted,
+} from "~/lib/supabase/queries";
 import { createClient } from "~/lib/supabase/server";
 
 export default async function DashboardLayout({
@@ -17,9 +21,10 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  const [isAdmin, onboardingCompleted] = await Promise.all([
+  const [isAdmin, onboardingCompleted, isPremium] = await Promise.all([
     checkIsAdmin(supabase, user.id),
     fetchOnboardingCompleted(supabase, user.id),
+    fetchIsPremium(supabase, user.id),
   ]);
 
   if (!onboardingCompleted) {
@@ -28,7 +33,7 @@ export default async function DashboardLayout({
 
   return (
     <>
-      <DashboardNavbar user={user} isAdmin={isAdmin} />
+      <DashboardNavbar user={user} isAdmin={isAdmin} isPremium={isPremium} />
       {children}
     </>
   );
